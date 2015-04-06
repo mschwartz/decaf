@@ -136,7 +136,7 @@ decaf.extend(WebSocket.prototype, {
      * The message sent is a string.  Caller may send JSON encoded objects  to the client, and the client should know to decode the object.
      *
      * The broadcast is done by a worker thread so the calling (Child) thread isn't blocked while sending to some number of clients.
-     * 
+     *
      * @param {string} path WebSocket path
      * @param {string} message message to send
      */

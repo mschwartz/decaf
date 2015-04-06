@@ -7,11 +7,12 @@
 /**
  * # Unit Test framework
  */
+/** @private */
 (function() {
     var testNumber = 1;
 
     /**
-     * ## desrcribe(description, fn);
+     * ## desrcribe(description, fn)
      *
      * @param description
      * @param fn
@@ -39,6 +40,7 @@
         return fn();
     }
 
+    /** @private */
     global.describe = describe;
     global.it = it;
 
