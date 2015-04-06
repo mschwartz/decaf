@@ -1,5 +1,28 @@
 /*global java */
 /**
+ * # HTTP Client
+ *
+ * This class allows you to perform HTTP requests.
+ *
+ * ### Example (get):
+ * ```javascript
+ * var Client = require('http').Client;
+ *
+ * var get = new Client('http://yahoo.com').get();
+ * console.log('status: ' + get.status);                // e.g. 200, 404...
+ * console.log('responseText: ' + get.responseText);    // HTML
+ *
+ * // post a form with field names username and password
+ * var post = new Client('http://example.com/login')
+ *              .post{{ username: 'user', password: 'pass' });
+ *
+ * console.log('status: ' + post.status);
+ * console.log('responseText: ' + post.responseText);
+ * ```
+ *
+ *
+ */
+/**
  * @private
  */
 var URL = java.net.URL,
@@ -12,6 +35,8 @@ var URL = java.net.URL,
     toJavaByteArray = decaf.toJavaByteArray;
 
 /**
+ * ## new Client(url) : client
+ *
  * Construct a HTTP Client
  *
  * After the GET/POST operation is complete, you can inspect these members of the Client object:
@@ -52,7 +77,11 @@ function getResponseText( conn ) {
 
 decaf.extend(Client.prototype, {
     /**
+     * ## client.setFollowRedirects(state) : chainable
      * Set client to follow (or not) redirects sent by server.
+     *
+     * ### Arguments:
+     * - {boolean} state - true to follow redirects (default is false)
      *
      * @param {boolean} state true to follow redirects (default is false)
      * @chainable
@@ -63,7 +92,13 @@ decaf.extend(Client.prototype, {
     },
 
     /**
+     * ## client.setHeader(key, value) : chainable
+     *
      * Set a request header
+     *
+     * ### Arguments:
+     * - {string} key - key of header to set
+     * - {string} value - value of header to set
      *
      * @param {string} key name of header to set
      * @param {string} value value of header to set
@@ -75,6 +110,8 @@ decaf.extend(Client.prototype, {
     },
 
     /**
+     * ## client.post(form) : chainable
+     *
      * Post a form or JSON to the connection
      *
      * The form data is a hash of name/value pairs; name is name of the form field, value is the value.
@@ -82,6 +119,10 @@ decaf.extend(Client.prototype, {
      * If the form argument is a string, it is assumed to be a object serialized as a JSON .string
      *
      * The value returned is the client object.  It can be inspected for responseText, responseCode, etc.
+     *
+     * ### Arguments:
+     * - {hash object | string} form - hash object representing form data, or serialized JSON string.
+     *
      *
      * @param {object} form the form data
      * @chainable
@@ -134,6 +175,8 @@ decaf.extend(Client.prototype, {
     },
 
     /**
+     * ## client.get() : chainable
+     *
      * Issue GET request to the connection.
      *
      * The value returned is the client object.  It can be inspected for responseText, responseCode, etc.
@@ -149,6 +192,7 @@ decaf.extend(Client.prototype, {
         delete this.conn;
         return this;
     }
+    /** @private */
 });
 
 decaf.extend(exports, {

@@ -1,9 +1,16 @@
 "use strict";
 
 /**
+ * # DecafJS WebSocket Implementation
+ *
+ * Applications typically do not instantiate WebSockets, but rather listen for WebSocket connections to be made by the client.
+ *
+ * For each such connection, a WebSocket instance is passed to an onConnect() method.  That method can add listeners per socket.
+ *
  * @fileoverview WebSocket implementation
  */
 
+/** @private */
 /*global require, java, sync, exports */
 var GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11",
     Thread = require('Threads').Thread,
@@ -29,18 +36,23 @@ function makeAccept(key) {
 var webSockets = {};
 
 /**
+ * ## new WebSocket(req, res) : WebSocket
+ *
  * Construct a new WebSocket.
  *
- * This constructor is typically not called by applications.  It is instantiated by
- * http.Child when an upgrade request is received.
+ * This constructor is typically not called by applications.  It is instantiated by http.Child when an upgrade request is received.
  *
- * The instantiated WebSocket object may well be manipulated (see member methods below)
- * by application code.
+ * The instantiated WebSocket object may well be manipulated (see member methods below) by application code.
+ *
+ * ### Arguments:
+ * - {Request} req - the request object
+ * - {Reponse} res - the response object
  *
  * @param {Request} req http.Request for the current Child Thread
  * @param {Response} res http.Response for the current Child Thread
  * @constructor
  */
+/** @private */
 function WebSocket(req, res) {
     var me = this;
 
@@ -58,29 +70,73 @@ function WebSocket(req, res) {
 
     me.uuid = uuid();
 
-    // this assures only one thread at a time can be in a WebSocket's
-    // send method.
+    /**
+     * ## websocket.send(s) : chainable
+     *
+     * Send a string to the client via the WebSocket.
+     *
+     * This method assures only one thread at a time can be in a WebSocket's send method.
+     *
+     * ### Arguments:
+     * - {string} s - the string to send
+     */
     me.send = sync(function (s) {
         me.rawSendMessage(s);
+        return me;
     }, me);
+    /**
+     * ## websocket.ping() : chainable
+     *
+     * Send a ping to the client, via WebSocket protocol
+     */
     me.ping = sync(function () {
         me.rawSendPing();
+        return me;
     }, this);
+    /**
+     * ## websocket.pong() : chainable
+     *
+     * Send a pong to the client, via WebSocket protocl
+     */
     me.pong = sync(function () {
         me.rawSendPong();
+        return me;
     }, me);
-    me.onmessage = me.onclose = function () {};
+    /**
+     * ## webSocket.onMessage : function
+     *
+     * You may optionally set this member to a function to handle incoming messages.  This is consistent with how client side WebSocket API works.
+     *
+     * However, you may instead listen for 'message' events on the WebSocket.
+     *
+     * @type {Function}
+     */
+    me.onmessage = function() {};
+    /**
+     * ## webSocket.onClose: function
+     *
+     * You may optionally set this member to a function to handle WebSocket close event.  This is consistent with how client side WebSocket API works.
+     *
+     * However, you may instead listen for 'close' events on the WebSocket.
+     *
+     * @type {Function}
+     */
+    me.onclose = function () {};
+    /** @private */
 }
 
 decaf.extend(WebSocket.prototype, decaf.observable);
 
 decaf.extend(WebSocket.prototype, {
     /**
+     * ## websocket.broadcast(path, message) : chainable
+     *
      * Broadcast a message to all sockets with the specified path (ws URI)
      *
-     * The message sent is a string.  Caller may send JSON encoded objects
-     * to the client, and the client should know to decode the object.
+     * The message sent is a string.  Caller may send JSON encoded objects  to the client, and the client should know to decode the object.
      *
+     * The broadcast is done by a worker thread so the calling (Child) thread isn't blocked while sending to some number of clients.
+     * 
      * @param {string} path WebSocket path
      * @param {string} message message to send
      */
@@ -93,7 +149,9 @@ decaf.extend(WebSocket.prototype, {
                 }
             });
         }).start();
+        return me;
     },
+    /** @private */
     run            : function () {
         var me = this,
             is = this.req.is,
@@ -126,6 +184,7 @@ decaf.extend(WebSocket.prototype, {
             }
         }
     },
+    /** @private */
     rawSendMessage : function (s) {
         var os = this.res.os.socket.getOutputStream(),
             len = s.length;
@@ -153,17 +212,19 @@ decaf.extend(WebSocket.prototype, {
         os.write(decaf.toJavaByteArray(s));
         os.flush();
     },
-
+    /** @private */
     rawSendPing : function () {
         var os = this.res.os.socket.getOutputStream();
         os.write(0x89);
         os.write(0);
     },
+    /** @private */
     rawSendPong : function () {
         var os = this.res.os.socket.getOutputStream();
         os.write(0x8a);
         os.write(0);
     },
+    /** @private */
     getMessage  : function (is) {
         function next() {
             return is.readByte();
@@ -245,11 +306,16 @@ decaf.extend(WebSocket.prototype, {
             return false;
         }
     },
+    /**
+     * ## websocket.close()
+     *
+     * Close the WebSocket.
+     */
     close: function() {
         debugger;
         this.req.is.destroy();
     }
-
+/** @private */
 });
 
 decaf.extend(exports, {

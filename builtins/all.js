@@ -63,12 +63,12 @@
 }(this, arguments));
 
 if (NASHORN) {
-    java.lang.System.out.println('NASHORN');
+    //java.lang.System.out.println('NASHORN');
     load('nashorn:mozilla_compat.js');
 }
-else {
-    java.lang.System.out.println('RHINO');
-}
+//else {
+//    java.lang.System.out.println('RHINO');
+//}
 /**
  * ## print(s)
  *
@@ -177,10 +177,3 @@ if (NASHORN && arguments[0] === 'debug') {
 else {
     include('builtins/shell.js');
 }
-
-//load('builtins/shell.js');
-console.log('breakpoint')
-//function breakpoint() {
-//    console.log('breakpoint')
-//}
-

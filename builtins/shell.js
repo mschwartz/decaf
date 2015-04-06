@@ -70,7 +70,6 @@
         if (arg.endsWith('.js')) {
             if (runShell) {
                 try {
-                    console.log('include ' + arg)
                     include(arg);
                 }
                 catch (e) {

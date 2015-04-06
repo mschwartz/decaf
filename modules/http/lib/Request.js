@@ -1,15 +1,137 @@
 "use strict";
 
 /**
+ * # HTTP Request object
+ *
+ * In the DecafJS http context, a Request represents the stream of data coming from the client over the socket.
+ *
+ * A Request instance provides members for analyzing the http protocol, handshakes, cookies, request URI, headers, etc.
+ *
+ * This page documents the most basic form of the Request object.  Add-ons for DecafJS may add additional decoration/members to the request object.
+ *
+ */
+
+/**
+ * ## new Request(is, maxUpload) : request object
+ *
  * Construct a Request instance
  *
  * Request instances are typically automatically created by http.Child
+ *
+ * ### Arguments:
+ * - {net.InputStream) is - Decaf net/InputStream to read the next request from
+ * - {number} maxUpload - Maximum number of allowed bytes for a file upload
  *
  * @constructor
  * @param {InputStream} is InputStream
  * @param {int} maxUpload maximum bytes allowed for file upload
  */
+
+/**
+ * ## req.queryParams : hash object
+ *
+ * A hash that contains the values of the query string part of the requested URL.
+ *
+ * The query string is the part of the URL that starts with ? and has the form ?name=value[&name=value...]
+ *
+ * If the URL ends with ?foo=10&bar=20, then req.queryParams will be:
+ *
+ *      { foo: 10, bar: 20 }
+ */
+
+/**
+ * ## req.uri : string
+ * The part of the requested URL up to, but not including, the query string.
+ *
+ * If the URL is http://company.com/something?foo=10&bar=20, then the value of req.uri will be
+ *
+ *      /something
+ */
+
+/**
+ * ## req.method : string
+ *
+ * The request method.
+ *
+ * The value of this field will be something like 'GET' or 'POST' or 'HEAD'
+ */
+
+/**
+ * ## req.protocol : string
+ *
+ * The request protocol
+ *
+ * The value of this field will be something like 'HTTP/1.0' or 'HTTP/1.1'
+ */
+
+/**
+ * ## req.headers: hash object
+ *
+ * A hash that contains the request headers.
+ *
+ * The keys in the hash are lower case, so you don't have to worry about the browser sending User-Agent vs. User-agent.
+ *
+ * Example:
+ *
+ *      {
+ *          'accept-encoding': 'gzip,deflate,sdch','
+ *          'accept-language': 'en-US,en;q=0.8','
+ *          'cache-control': 'max-age=0','
+ *          'connection': 'keep-alive','
+ *          'host': 'localhost:8080','
+ *          'referer': 'http://localhost:8080/api/MySQL',
+ *          'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/28.0.1500.71 Safari/537.36'
+ *      }
+ */
+
+/**
+ * ## req.host : string
+ *
+ * The host part of the requested URL.
+ *
+ * If the URL was http://company.com/something?foo=10&bar=20, the value of req.host will be
+ *
+ *      company.com
+ */
+
+/**
+ * ## req.port : number
+ *
+ * The port part of the requested URL.
+ *
+ * If the URL was http://company.com:9090/something?foo=10&bar=20, the value of req.port will be
+ *
+ *      9090
+ *
+ * Defaults to 80 if no port specified in the URL
+ */
+
+/**
+ * ## req.remote_addr : string
+ *
+ * The IP address of the remote side of the connection.
+ *
+ * In other words, the IP address of the browser hitting the server.
+ */
+
+/**
+ * ## req.cookies: hash object
+ *
+ * A hash containing the cookies sent to the server.
+ *
+ * Index by name of cookie to get its value.
+ */
+
+/**
+ * ## req.data : hash object
+ * A hash containing all of the query parameters, and form data.
+ *
+ * Index by name of form field or query parameter to get the value.
+ */
+
+/** @private */
 function Request(is, maxUpload) {
+    /** @private */
     this.is = is;
     maxUpload = maxUpload || (10 * 1024 * 1024); // default max upload is 10M
 
@@ -38,39 +160,11 @@ function Request(is, maxUpload) {
         });
     }
 
-    /**
-     * A hash that contains the values of the query string part of the requested URL.
-     *
-     * The query string is the part of the URL that starts with ? and has the form ?name=value[&name=value...]
-     *
-     * If the URL ends with ?foo=10&bar=20, then req.queryParams will be:
-     *
-     *      { foo: 10, bar: 20 }
-     */
     this.queryParams = queryParams;
-
-    /**
-     * The part of the requested URL up to, but not including, the query string.
-     *
-     * If the URL is http://company.com/something?foo=10&bar=20, then the value of req.uri will be
-     *
-     *      /something
-     */
     this.uri = uriParts[0];
-
-    /**
-     * The request method.
-     *
-     * The value of this field will be something like 'GET' or 'POST' or 'HEAD'
-     */
     this.method = parts[0].toUpperCase();
-
-    /**
-     * The request protocol
-     *
-     * The value of this field will be something like 'HTTP/1.0' or 'HTTP/1.1'
-     */
     this.proto = (parts[2] || 'http/0.9').toUpperCase();
+
     // parse headers
     var headers = {};
     var done = false;
@@ -97,26 +191,9 @@ function Request(is, maxUpload) {
             break;
         }
     }
-
-    /**
-     * A hash that contains the request headers.
-     *
-     * The keys in the hash are lower case, so you don't have to worry about the browser sending User-Agent vs. User-agent.
-     *
-     * Example:
-     *
-     *      {
-     *          'accept-encoding': 'gzip,deflate,sdch','
-     *          'accept-language': 'en-US,en;q=0.8','
-     *          'cache-control': 'max-age=0','
-     *          'connection': 'keep-alive','
-     *          'host': 'localhost:8080','
-     *          'referer': 'http://localhost:8080/api/MySQL',
-     *          'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_8_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/28.0.1500.71 Safari/537.36'
-     *      }
-     */
     this.headers = headers;
 
+    // process host and port
     var host = 'localhost';
     var port = is.serverPort;
     if (headers.host) {
@@ -124,34 +201,13 @@ function Request(is, maxUpload) {
         port = host[1] || '80';
         host = host[0];
     }
-
-    /**
-     * The host part of the requested URL.
-     *
-     * If the URL was http://company.com/something?foo=10&bar=20, the value of req.host will be
-     *
-     *      company.com
-     */
     this.host = host;
-
-    /**
-     * The port part of the requested URL.
-     *
-     * If the URL was http://company.com:9090/something?foo=10&bar=20, the value of req.port will be
-     *
-     *      9090
-     *
-     * Defaults to 80 if no port specified in the URL
-     */
     this.port = port;
 
-    /**
-     * The IP address of the remote side of the connection.
-     *
-     * In other words, the IP address of the browser hitting the server.
-     */
+    // set remote address (of the browser)
     this.remote_addr = is.remoteAddress();
 
+    // set up cookies
     var cookies = {};
     if (headers.cookie) {
         try {
@@ -164,12 +220,6 @@ function Request(is, maxUpload) {
 
         }
     }
-
-    /**
-     * A hash containing the cookies sent to the server.
-     *
-     * Index by name of cookie to get its value.
-     */
     this.cookies = cookies;
 
     // process POST data
@@ -260,16 +310,12 @@ function Request(is, maxUpload) {
         }
     }
 
-    /**
-     * A hash containing all of the query parameters, and form data.
-     *
-     * Index by name of form field or query parameter to get the value.
-     */
     this.data = data;
 
     var gzip = headers['accept-encoding'];
     this.gzip = gzip && (gzip.indexOf('gzip') !== -1);
 }
+
 
 decaf.extend(exports, {
     Request : Request

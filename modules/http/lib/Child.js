@@ -23,63 +23,34 @@
         Response = require('Response').Response,
         WebSocket = require('WebSocket').WebSocket;
 
-    function handleRequest(is, os, fn, webSockets) {
-        var request = new Request(is),
-            response = new Response(os, request),
-            keepAlive = true;
-
-        this.req = request;
-        this.res = response;
-        request.threadId = this.threadId;
-        request.scope = this;
-
-        this.fire('startRequest', request, response);
-
-        var connection = (request.headers['connection'] || '').toLowerCase(),
-            headers = response.headers;
-        if (connection === 'upgrade') {
-            if (request.headers['upgrade'].toLowerCase() !== 'websocket') {
-                return false;
-            }
-            var parts = request.uri.split('/'),
-                part = parts[0] || parts[1];
-            if (webSockets[part]) {
-                var ws = new WebSocket(request, response);
-                webSockets[part](ws);    // socket connect
-                ws.run();                       // handle the socket until close, etc.
-            }
-            return false;
-        }
-        else if (connection === 'keep-alive') {
-            headers['Connection'] = 'Keep-Alive';
-            headers['keep-alive'] = 'timeout: 5; max = 10000000';
-        }
-        else {
-            headers['Connection'] = 'close';
-            keepAlive = false;
-        }
-        if (fn.call(this, request, response) === false) {
-            headers['Connection'] = 'close';
-            keepAlive = false;
-        }
-        response.destroy();
-        return keepAlive;
-    }
-
     /**
+     * # HTTP Child
+     *
      * Thread to handle HTTP requests.
      *
-     * There are typically numChildren (see Server.listen) Child threads spawned at start.
+     * There are typically numChildren (see Server.listen) Child threads spawned at start.  You will not spawn Child threads yourself.
      *
-     * The Child logic is two nested loops.  The outer loop accepts connections.  The inner loop
-     * processes requests on the accepted connection until the connection is closed or until
-     * the HTTP protocol requires the connection to be closed (Connection: close).
+     * The Child logic is two nested loops.  The outer loop accepts connections.  The inner loop processes requests on the accepted connection until the connection is closed or until the HTTP protocol requires the connection to be closed (Connection: close).
      *
-     * If a request is an upgrade to WebSocket, the thread becomes dedicated to servicing the
-     * socket.
+     * If a request is an upgrade to WebSocket, the thread becomes dedicated to servicing the socket.
      *
-     * A Request and Response object are created for each request handled.  See http/Request.js
-     * and http/Response.js for details.
+     * A Request and Response object are created for each request handled.
+     *
+     * ### Events:
+     * - startRequest(req, res) is fired as soon as request and response objects are created
+     * - endRequest is fired when the request has completed
+     *
+     * Note that many requests may occur over a single socket connection between browser and server.
+     *
+     * ### See:
+     *
+     * - http/Request.js
+     * - http/Response.js
+     * - http/WebSocket.js
+     * - net/Socket.js
+     * - net/InputStream.js
+     * - net/OutputStream.js
+     *
      *
      * @param {Socket} serverSocket the Socket to accept connections from
      * @param {object} server instance of the http Server that spawned this child
@@ -125,9 +96,9 @@
                     if (e.dumpText) {
                         e.dumpText();
                     }
-					else if (e === 'RES.STOP') {
-						continue;
-					}
+                    else if (e === 'RES.STOP') {
+                        continue;
+                    }
                     else {
                         console.exception(e);
                     }
@@ -139,6 +110,69 @@
             sock.destroy();
         }
     }
+
+    /**
+     * ## private handleRequest(is, os, fn, webSockets)
+     *
+     * This is a private method called by HTTP Child threads to handle a single request.
+     *
+     * A Request instance and a Response instance is created for each request.
+     *
+     * This method handles connection upgrade to websocket.  If an upgrade occurs, the function does not return until the websocket is closed.
+     *
+     * This method handles HTTP/1.1 keep-alive requests as well.
+     *
+     * @param is
+     * @param os
+     * @param fn
+     * @param webSockets
+     * @returns {boolean}
+     */
+    function handleRequest(is, os, fn, webSockets) {
+        var request = new Request(is),
+            response = new Response(os, request),
+            keepAlive = true;
+
+        this.req = request;
+        this.res = response;
+        request.threadId = this.threadId;
+        request.scope = this;
+
+        this.fire('startRequest', request, response);
+
+        var connection = (request.headers['connection'] || '').toLowerCase(),
+            headers = response.headers;
+        if (connection === 'upgrade') {
+            if (request.headers['upgrade'].toLowerCase() !== 'websocket') {
+                return false;
+            }
+            var parts = request.uri.split('/'),
+                part = parts[0] || parts[1];
+            if (webSockets[part]) {
+                var ws = new WebSocket(request, response);
+                webSockets[part](ws);    // socket connect
+                ws.run();                       // handle the socket until close, etc.
+            }
+            return false;
+        }
+        else if (connection === 'keep-alive') {
+            headers['Connection'] = 'Keep-Alive';
+            headers['keep-alive'] = 'timeout: 5; max = 10000000';
+        }
+        else {
+            headers['Connection'] = 'close';
+            keepAlive = false;
+        }
+        if (fn.call(this, request, response) === false) {
+            headers['Connection'] = 'close';
+            keepAlive = false;
+        }
+        response.destroy();
+        return keepAlive;
+    }
+
+    /** @private */
+
 
     decaf.extend(exports, {
         Child : Child

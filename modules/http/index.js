@@ -4,15 +4,20 @@
  */
 
 
+/**
+ * # http module
+ */
+
 /*global require */
 
+/**
+ * ## exports
+ */
 (function() {
     "use strict";
 
-    var createServer = require('./lib/Server').createServer;
-
     decaf.extend(exports, {
-        createServer: createServer,
+        createServer: require('./lib/Server').createServer,
         methods: require('./lib/Methods').methods,
         Child: require('./lib/Child'),
         Request: require('./lib/Request'),

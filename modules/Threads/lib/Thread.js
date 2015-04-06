@@ -1,6 +1,5 @@
-/*global builtin, java */
+/*global exports, builtin, java */
 
-/*global exports */
 "use strict";
 var process = require('process');
 
@@ -21,22 +20,101 @@ var removeThread = sync(function(threadId) {
     }
 }, threads);
 
-//function allocThreadId() {
-//    while (true) {
-//        ++nextThreadId;
-//        nextThreadId %= 65536;
-//        if (!threads[nextThreadId]) {
-//            return nextThreadId;
-//        }
-//    }
-//}
-
 /** @module Thread */
 
 /**
+ * # Decaf Threads Module
+ *
+ * Decaf provides an API for spawning and manipulating JavaScript running in JVM threads.  Think of these as
+ * true JavaScript threads.
+ *
+ * By default, a Decaf application has just one thread, the "main" thread.  If you spawn additional threads,
+ * they share the global address space with the main thread and each other.  This means they can access the
+ * same global variables, call the same functions, and so on.
+ *
+ * Hannes Wallnöfer wrote a great article about how Threaded JavaScript works here:
+ * - http://hns.github.io/2011/05/12/threads.html
+ *
+ * Using Decaf Threads is trivial:
+ *
+ * ```javascript
+ * var Thread = require('Threads').Thread;
+ *
+ * var myThread = new Thread(function() {
+ *      while (!Thread.interrupted()) {
+ *          Thread.sleep(1);
+ *          console.log('Thread alive');
+ *      }
+ *  });
+ *
+ *  myThread.start();
+ *  // myThread is now running and printing "Thread alive" every second.
+ *
+ *  // let's let it run for 10 seconds
+ *  Thread.sleep(10);
+ *
+ * // Now let's interrupt it (it will exit its while loop)
+ * myThread.interrupt();
+ * ```
+ *
+ * ### Observable Threads
+ *
+ * Decaf Thread instances are observable.  That is, they support event listeners and firing arbitrary events per thread.
+ *
+ * WHen a Thread exits, an "exit" event will be fired on the thread instance.  You might use this to spawn a new thread to replace the one that is exiting.
+ *
+ * You may listen on any other events by name and fire those on the thread instance as well.
+ *
+ * ### Thread instance "this"
+ *
+ * Each Thread instance has a "this" that points at an object with Thread local information.  You may store thread local data on the "this.data" object if you choose.
+ *
+ * In fact, many of the Decaf modules (add ons, repositories) store per-thread data on the "this" per thread.
+ *
+ * ### Passing arguments to Threads
+ *
+ * The Decaf implementation of Threads allows you to specify arguments to be passed to your Thread function.
+ *
+ * ```javascript
+ * var Thread = require('Threads').Thread;
+ *
+ * var myThread = new Thread(function(a, b, c) {
+ *    this.on('exit', function() {
+ *        console.log('myThread exited');
+ *    });
+ *    console.log('a = ' + a);
+ *    console.log('b = ' + b);
+ *    console.log('c = ' + c);
+ * }, 1, 2, 3);
+ *
+ * myThread.start();
+ * // => a = 1
+ * // => b = 2
+ * // => c = 3
+ * // and myThread exits:
+ * // => myThread exited
+ * ```
+ */
+
+/**
+ * ## new Thread(fn, ...arguments) : Thread
+ *
  * Create a new Thread
  *
- * Note: the thread isn't started, it is only created
+ * Note: the thread isn't started, it is only created.  You must call the start() method of the newly created thread to start it running.
+ *
+ * ### Arguments:
+ * - fn {function} - the function to be run in a new JVM thread
+ * - ...arguments - optional arguments that will be passed to the function when the thread is started
+ *
+ * ### Returns:
+ * - A reference to the "this" object for the new Thread.
+ *
+ * ### Example:
+ *
+ * ```javascript
+ * var thread = new Thread(myThreadFunction);
+ * ```
  *
  * @class Thread
  * @param {Function} fn - function to run as thread
@@ -48,23 +126,22 @@ function Thread(fn) {
         args.push(arguments[i]);
     }
     decaf.extend(this, {
-        //threadId  : allocThreadId(),
         fn        : fn,
         args      : args,
         lockCount : 0,
-        listeners : {},
         data      : {}
     });
-    //threads[this.threadId] = this;
 }
 
 /**
+ * ## static Thread.exit();
+ *
  * Exit the currently running thread
  *
  * @method exit
  */
 Thread.exit = function () {
-    // console.log('THREAD.EXIT');
+    // THREAD.EXIT is caught to implement Decaf handling of Thread termination
     throw 'THREAD.EXIT';
 };
 
@@ -76,7 +153,12 @@ var mainThread = {
 };
 
 /**
+ * ## static Thread.currentThread() : Thread
+ *
  * Get current Thread
+ *
+ * ### Returns
+ * - {thread} "this" of currently running Thread.
  *
  * @method currentThread
  */
@@ -85,65 +167,70 @@ Thread.currentThread = function () {
     return threads[t] || mainThread;
 };
 
+/**
+ * ## static Thread.threadCount() : number
+ *
+ * Returns the number of threads created (not necessarily started).
+ *
+ * ### Returns:
+ * - {number} - the number of threads created.
+ *
+ * @returns {number}
+ */
 Thread.threadCount = function() {
     return threadCount;
 };
 
 /**
- * Defer to other running threads for specified number of seconds.
+ * ## static Thread.sleep(seconds)
+ *
+ * Puts the current thread to sleep.  In other words, defer to other running threads for specified number of seconds.
+ *
+ * A thread that is asleep blocks.  That is, it won't consume any CPU time until it is awaken.
+ *
+ * ### Arguments:
+ * - {number} seconds - number of seconds to sleep.
  *
  * @method sleep
- * @param secs
+ * @param seconds
  */
-Thread.sleep = function (secs) {
-    process.sleep(secs);
+Thread.sleep = function (seconds) {
+    process.sleep(seconds);
 };
 
 /**
- * Defer to other running threads for specified number of milliseconds
+ * ## static Thread.usleep(millseconds)
+ *
+ * Puts the current thread to sleep.  In other words, defer to other running threads for specified number of milliseconds
+ *
+ * ### Arguments:
+ * - {number} milliseconds - number of milliseconds to sleep.
  *
  * @method usleep
- * @param usecs
+ * @param milliseconds
  */
-Thread.usleep = function (usecs) {
-    process.usleep(usecs);
+Thread.usleep = function (milliseconds) {
+    process.usleep(milliseconds);
 };
 
+/**
+ * ## static Thread.interrupted() : boolean
+ *
+ * Check to see if current thread has been interrupted.
+ *
+ * A thread may interrupt another thread by calling it interrupt() method.
+ *
+ * ### Returns:
+ * - true if current thread has been interrupted.
+ */
 Thread.interrupted = function () {
     return java.lang.Thread.interrupted();
 };
 
 decaf.extend(Thread.prototype, {
     /**
-     * Add an event listener on the thread.
+     * ## thread.start()
      *
-     * @method on
-     * @param event
-     * @param fn
-     */
-    on          : function (event, fn) {
-        this.listeners[event] = this.listeners[event] || [];
-        this.listeners[event].push(fn);
-    },
-    /**
-     * Fire an event on the thread.
-     *
-     * @metod fire
-     * @param event
-     */
-    fire        : function (event) {
-        var me = this;
-        if (me.listeners[event]) {
-            var args = [];
-            for (var i = 1, len = arguments.length; i < len; i++) {
-                args.push(arguments[i]);
-            }
-            decaf.each(me.listeners[event], function (fn) {
-                fn.apply(me, args);
-            });
-        }
-    },
-    /**
      * Start the thread running
      *
      * @method start
@@ -153,6 +240,8 @@ decaf.extend(Thread.prototype, {
         me.thread = new java.lang.Thread(new java.lang.Runnable({run : me.runHandler, scope : me})).start();
     },
     /**
+     * ## thread.Interrupt()
+     *
      * Interrupt the thread
      */
     interrupt   : function () {
@@ -167,8 +256,6 @@ decaf.extend(Thread.prototype, {
             t = java.lang.Thread.currentThread();
 
         addThread(t, me);
-        //me.javaThreadId = t.getId();
-        //javaThreads[me.javaThreadId] = me;
         try {
             me.fn.apply(me, me.args);
         }
@@ -193,10 +280,11 @@ decaf.extend(Thread.prototype, {
             // unlock any mutexes
         }
         removeThread(me);
-        //delete javaThreads[me.javaThreadId];
-        //delete threads[me.threadId];
     }
 });
+
+/** @private */
+decaf.extend(Thread.prototype, decaf.observable);
 
 builtin.onIdle(function() {
     return threadCount != 0;

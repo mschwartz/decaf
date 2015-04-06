@@ -1,4 +1,4 @@
-/**
+/*!
  * Created with JetBrains WebStorm.
  * User: mschwartz
  * Date: 7/2/13
@@ -10,15 +10,56 @@
  * @module Threads
  */
 
-// condition variables (untested)
+/** @private */
 
 /*global sync, exports, java */
 "use strict";
 
 /**
- * A condition instance provides a mechanism for one thread to wait until the Condition is notified by another thread.
+ * # Condition Variables
  *
- * @class Conditional
+ * A condition instance provides a mechanism for one or ore threads to wait until the Condition is notified by another thread.
+ *
+ * ## Example:
+ * ```javascript
+ * var Thread = require('Threads').Thread,
+ *     Condition = require('Threads').Condition;
+ *
+ * var condition = new Condition();
+ *
+ * new Thread(function() {
+ *     this.on('exit', function() {
+ *         console.log('first thread exiting');
+ *     });
+ *     Thread.sleep(5);
+ *     condition.notify();
+ *     Thread.sleep(2);
+ * }).start();
+ *
+ * new Thread(function() {
+ *     this.on('exit', function() {
+ *         console.log('second thread exiting');
+ *     });
+ *     Thread.sleep(2);
+ *     condition.wait();
+ *     console.log('Second thread notified');
+ * }).start();
+ *
+ * // outputs:
+ * // Second thread notified (5 seconds later)
+ * // second thread exiting
+ * // first thread exiting (2 seconds later)
+ * ```
+ */
+
+/**
+ * ## new Condition() : condition
+ *
+ * Construct a new Condition variable
+ *
+ * ### Returns:
+ * - {Condition} instance of a condition variable
+ *
  * @constructor
  */
 function Condition() {
@@ -26,8 +67,9 @@ function Condition() {
 
     /** @private */
     me.variable = new java.lang.Object();
-
     /**
+     * ## condition.wait()
+     *
      * Wait for a notify.
      *
      * @method wait
@@ -35,17 +77,19 @@ function Condition() {
     this.wait = sync(function () {
         me.variable.wait();
     }, me.variable);
-
     /**
-     * Notify
+     * ## condition.notify()
+     *
+     * Awaken one thread that is waiting on this condition variable.
      *
      * @method notify
      */
     this.notify = sync(function () {
         me.variable.notify();
     }, me.variable);
-
     /**
+     * ## condition.notifyAll()
+     *
      * Notify all threads waiting on this Condition instance.
      *
      * @method notifyAll
@@ -56,6 +100,8 @@ function Condition() {
 }
 decaf.extend(Condition.prototype, {
     /**
+     * ## condition.destroy()
+     *
      * Destroy condition variable
      *
      * @method destroy
@@ -63,6 +109,7 @@ decaf.extend(Condition.prototype, {
     destroy : function () {
         this.notifyAll();
     }
+    /** @private */
 });
 
 decaf.extend(exports, {

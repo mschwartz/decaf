@@ -4,8 +4,18 @@
 
 /*global global */
 
+/**
+ * # Unit Test framework
+ */
 (function() {
     var testNumber = 1;
+
+    /**
+     * ## desrcribe(description, fn);
+     *
+     * @param description
+     * @param fn
+     */
     function describe(description, fn) {
         testNumber = 1;
         console.log('--------------------');
@@ -14,6 +24,15 @@
             console.log('    SUCCEEDED');
         }
     }
+
+    /**
+     * ## it(description, fn)
+     *
+     *
+     * @param description
+     * @param fn
+     * @returns {*}
+     */
     function it(description, fn) {
         console.log('- Test #' + testNumber + ': ' + description);
         testNumber++;
