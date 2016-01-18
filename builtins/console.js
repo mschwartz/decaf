@@ -51,8 +51,9 @@
                 if (arg === undefined) {
                     arg = 'undefined';
                 }
-                java.lang.System.out.println(arg);
+                java.lang.System.out.print(arg);
             }
+            java.lang.System.out.println('');
         },
         /**
          * ## console.dir(o, depth)
